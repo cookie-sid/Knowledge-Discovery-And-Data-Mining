@@ -1,0 +1,108 @@
+---
+title: "Assignment 4"
+author: 'Siddharth Harsukh Pansuria | CWID: 20005837'
+date: "3/6/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+### Clearing Environmental Variables
+```{r}
+rm(list = ls())
+```
+
+### Loading the breast cancer dataset and replacing '?' with NA
+```{r}
+data <- read.csv("breast-cancer-wisconsin.csv", na.strings = '?')
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(data, n = 10)
+```
+
+### Deleting rows with missing values
+```{r}
+data <- na.omit(data)
+```
+
+### Removing first column since it only contains ID
+```{r}
+data <- data[-1]
+```
+
+### Setting column 'Class' as a factor of benign and malignant
+```{r}
+data$Class <- factor(data$Class, levels = c(2,4), labels = c("benign", "malignant"))
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(data, n = 10)
+```
+
+### Creating a function for min max normalization
+```{r}
+min_max_norm <- function(x, minX, maxX) {
+  ans <- (x - minX)/(maxX - minX)
+  return (ans)
+}
+```
+
+### Getting number of columns without the 'Class' column
+```{r}
+target <- ncol(data) - 1
+```
+
+### Normalizing the data
+```{r}
+normalized_data <- data.frame(matrix(NA, nrow = nrow(data), ncol = ncol(data)))
+colnames(normalized_data) <- c(colnames(data))
+
+for (i in c(1 : target)) {
+  normalized_data[,i] <- min_max_norm(data[,i], min(data[,i]), max(data[,i]))
+}
+
+normalized_data[,ncol(data)] <- data[,ncol(data)]
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(normalized_data, n = 10)
+```
+
+### Splitting the dataset into training and test data
+```{r}
+id <- sort(sample(nrow(normalized_data), as.integer(.70 * nrow(normalized_data))))
+train_data <- normalized_data[id,]
+test_data <- normalized_data[-id,]
+```
+
+### Installing package to implement Naïve Bayes methodology 
+```{r}
+install.packages("e1071", dependencies = TRUE, repos = "http://cran.us.r-project.org")
+library(e1071)
+```
+
+### Implementing Naïve Bayes methodology
+```{r}
+NaiveBayes <- naiveBayes(Class ~., data = train_data)
+predict_NaiveBayes <- predict(NaiveBayes, test_data)
+```
+
+### Frequency table for the Naïve Bayes predictions
+```{r}
+table(NaiveBayes = predict_NaiveBayes, Class = test_data$Class)
+```
+
+### Calculating the error rate
+#### Number of wrong predictions
+```{r}
+wrong_preds <- sum(predict_NaiveBayes != test_data$Class)
+```
+#### Error Rate in Naïve Bayes predictions
+```{r}
+error_rate <- wrong_preds/length(predict_NaiveBayes)
+print(paste("Error Rate:" , error_rate))
+```

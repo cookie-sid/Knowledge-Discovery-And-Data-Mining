@@ -1,0 +1,121 @@
+---
+title: "Assignment 2"
+author: 'Siddharth Harsukh Pansuria | CWID: 20005837'
+date: "2/21/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+### Clearing environmental variables
+``` {r}
+rm(list = ls())
+```
+
+### Loading breast-cancer-wisconsin.csv and replacing '?' with NA
+```{r}
+data <- read.csv("breast-cancer-wisconsin.csv", na.strings = '?')
+```
+
+### Viewing the top 10 rows of the loaded data
+```{r}
+head(data, n = 10)
+```
+
+### Deleting rows with missing values
+```{r}
+data <- na.omit(data)
+```
+
+### Removing the first column since it only contains ID
+```{r}
+data <- data[-1]
+```
+
+### Setting column 'Class' as a factor of benign and malignant
+```{r}
+data$Class <-factor(data$Class,levels = c(2,4), labels = c("benign","malignant"))
+```
+
+### Viewing the top 10 rows of the loaded data
+```{r}
+head(data, n = 10)
+```
+
+### Creating a function for min max normalization
+```{r}
+min_max_norm <-function(x,minX,maxX) 
+{
+  ans <- (x - minX) / (maxX - minX)
+  return(ans) 
+}
+```
+
+### Getting number of columns with the 'Class' column
+```{r}
+target <- ncol(data)-1
+```
+
+### Normalizing the data
+```{r}
+normalized_data <- data.frame(matrix(NA,nrow = nrow(data), ncol = ncol(data)))
+colnames(normalized_data) <- c(colnames(data))
+
+for (i in c(1:target)) {
+  normalized_data[,i] <- min_max_norm(data[,i], min(data[,i]), max(data[,i]))
+}
+
+normalized_data[,ncol(data)] <- data[,ncol(data)]
+
+```
+
+### Viewing the top 10 rows of the loaded data
+```{r}
+head(normalized_data, n = 10)
+```
+
+### Splitting the dataset into training and test data
+```{r}
+id <- sort(sample(nrow(normalized_data),as.integer(.70*nrow(normalized_data))))
+
+train_data <- normalized_data[id,]
+test_data <- normalized_data[-id,]
+```
+
+### Installing knn
+```{r}
+install.packages("kknn",repos = "http://cran.us.r-project.org")
+library(kknn)
+```
+### Implementing the KNN model for k = 3
+```{r}
+  prediction_k3 <- kknn(formula=Class~., train_data, test_data[,-11], k=3, kernel ="rectangular")
+  fit_k3 <- fitted(prediction_k3)
+```
+
+### Implementing the KNN model for k = 5
+```{r}
+  prediction_k5 <- kknn(formula=Class~., train_data, test_data[,-11], k=5, kernel ="rectangular")
+  fit_k5 <- fitted(prediction_k5)
+```
+
+### Implementing the KNN model for k = 10
+```{r}
+  prediction_k10 <- kknn(formula=Class~., train_data, test_data[,-11], k=10, kernel ="rectangular")
+  fit_k10 <- fitted(prediction_k10)
+```
+
+### Frequency table for KNN mode where k = 3
+```{r}
+  table(Actual=test_data$Class, Fitted=fit_k3)
+```
+
+### Frequency table for KNN mode where k = 5
+```{r}
+  table(Actual=test_data$Class, Fitted=fit_k5)
+```
+
+### Frequency table for KNN mode where k = 10
+```{r}
+  table(Actual=test_data$Class, Fitted=fit_k10)
+```

@@ -1,0 +1,115 @@
+---
+title: "Assignment 6"
+author: 'Siddharth Harsukh Pansuria | CWID: 20005837'
+date: "3/26/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+### Clearing environmental variables.
+```{r}
+rm(list = ls())
+```
+
+### Loading the breast cancer dataset
+```{r}
+data <- read.csv('breast-cancer-wisconsin.csv')
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(data, n = 10)
+```
+
+### Removing first Column since it only contains ID
+```{r}
+data <- data[-1]
+```
+
+### Setting column 'Class' as a factor of benign and malignant
+```{r}
+data$Class <- factor(data$Class, levels = c(2,4), labels = c("benign", "malignant"))
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(data, n = 10)
+```
+
+### Splitting the dataset into training and test data
+```{r}
+id <- sort(sample(nrow(data), as.integer(.70 * nrow(data))))
+train_data <- data[id,]
+test_data <- data[-id,]
+```
+
+### Installing package and implementing C5.0
+```{r}
+# install.packages("C50",repos="http://cran.us.r-project.org")
+library('C50')
+C50 <- C5.0(Class~., data = train_data)
+```
+
+### Predicting using C5.0
+```{r}
+predict_C50 <- predict(C50, test_data, type = "class" )
+```
+
+### Plotting the tree
+```{r}
+plot(C50)
+```
+
+### Frequency table for C5.0
+```{r}
+table(C5.0 = predict_C50, Class = test_data$Class)
+```
+
+### Calculating the error rate
+### Number of wrong predictions
+```{r}
+wrong_preds_C50 <- sum(predict_C50 != test_data$Class)
+```
+
+### Error Rate in C5.0 predictions
+```{r}
+error_rate_C50 <- wrong_preds_C50/length(predict_C50)
+print(paste("Error Rate:" , error_rate_C50))
+```
+
+### Installing package and implementing Random Forest 
+```{r}
+# install.packages('randomForest', repos = "http://cran.us.r-project.org")
+library(randomForest)
+randomF <- randomForest(Class~., data = train_data, importance = TRUE, ntree = 1000)
+```
+
+### Implementing Random Forest methodology
+```{r}
+predict_randomF <- predict(randomF, test_data)  
+```
+
+### Identifying and plotting only the important features
+```{r}  
+importance(randomF)
+varImpPlot(randomF, main = "Chart of variable importance")
+```
+
+### Frequency table for Random Forest
+```{r}
+table(RandomForest = predict_randomF, Class = test_data$Class)
+```
+
+### Calculating the error rate
+### Number of wrong predictions
+```{r}
+wrong_preds_RF <- sum(predict_randomF != test_data$Class)
+```
+
+### Error Rate in Random Forest predictions
+```{r}
+error_rate_RF <- wrong_preds_RF/length(predict_randomF)
+print(paste("Error Rate:" , error_rate_RF))
+```

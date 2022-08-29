@@ -1,0 +1,387 @@
+---
+title: "KDD Project"
+author: 'Siddharth Harsukh Pansuria | CWID: 20005837'
+date: "3/23/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+### Clearing environmental variables.
+```{r}
+rm(list = ls())
+```
+
+### Loading the data
+```{r}
+data <- read.csv("Loan_Default.csv")
+target <- data[,c(ncol(data) - 1)]
+data <- data[,-c(ncol(data) - 1)]
+```
+
+### Converting columns not containing missing values and categorical data into factors of numeric values
+```{r}
+data$loan_limit <- factor(data$loan_limit, levels = c("cf","ncf"), labels = c(0,1))
+data$Gender <- factor(data$Gender, levels = c("Male", "Female", "Joint"), labels = c(0,1,2))
+data$approv_in_adv <- factor(data$approv_in_adv, levels = c("pre", "nopre"), labels = c(0,1))
+data$loan_type <- factor(data$loan_type, levels = c("type1","type2","type3"), labels = c(0,1,2))
+data$loan_purpose <- factor(data$loan_purpose, levels = c("p1","p2","p3", "p4"), labels = c(0,1,2,3))
+data$Credit_Worthiness <- factor(data$Credit_Worthiness, levels = c("l1","l2"), labels = c(0,1))
+data$open_credit <- factor(data$open_credit, levels = c("nopc","opc"), labels = c(0,1))
+data$business_or_commercial <- factor(data$business_or_commercial, levels = c("nob/c","b/c"), labels = c(0,1))
+data$Neg_ammortization <- factor(data$Neg_ammortization,levels = c("not_neg","neg_amm"), labels = c(0,1))
+data$interest_only <- factor(data$interest_only, levels = c("not_int","int_only"), labels = c(0,1))
+data$lump_sum_payment <- factor(data$lump_sum_payment, levels = c("not_lpsm","lpsm"), labels = c(0,1))
+data$construction_type <- factor(data$construction_type, levels = c("sb","mh"), labels = c(0,1))
+data$occupancy_type <- factor(data$occupancy_type, levels = c("pr","sr","ir"), labels = c(0,1,2))
+data$Secured_by <- factor(data$Secured_by, levels = c("home","land"), labels = c(0,1))
+data$total_units <- factor(data$total_units, levels = c("1U","2U","3U","4U"), labels = c(1,2,3,4))
+data$credit_type <- factor(data$credit_type, levels = c("EXP","EQUI","CRIF","CIB"), labels = c(0,1,2,3))
+data$co.applicant_credit_type <- factor(data$co.applicant_credit_type, levels = c("EXP","CIB"), labels = c(0,1))
+data$Region <- factor(data$Region, levels = c("south","North","central","North-East"), labels = c(0,1,2,3))
+data$submission_of_application <- factor(data$submission_of_application, levels = c("not_inst","to_inst"), labels = c(0,1))
+data$Security_Type <- factor(data$Security_Type, levels = c("direct", "Indriect"), labels = c(0,1))
+data$age <- factor(data$age, levels = c("<25","25-34","35-44","45-54", "55-64", "65-74",">74"), labels = c(0,1,2,3,4,5,6))
+```
+
+### Converting missing categorical values with NA
+```{r}
+data$loan_limit[which(data$loan_limit == "")] = NA
+data$Gender[which(data$Gender == "Sex Not Available")] = NA
+data$approv_in_adv[which(data$approv_in_adv == "")] = NA
+data$loan_purpose[which(data$loan_purpose == "")] = NA
+data$Neg_ammortization[which(data$Neg_ammortization == "")] = NA
+data$age[which(data$age == "")] = NA
+```
+
+
+### Imputing missing values using mice
+```{r}
+data <- data[, -c(1,2,9,20,22,31,32)]
+colnames(data)
+library(mice)
+methods(mice)
+miceMod <- mice(data[, !names(data) %in% "medv"], method="rf")  # perform mice imputation, based on random forests.
+miceOutput <- complete(miceMod)
+anyNA(miceOutput)
+miceOutput$Status = target
+
+write.csv(miceOutput,"Mice_Final_LoanDefault.csv", row.names = TRUE)
+
+tmp <- read.csv("Mice_Final_LoanDefault.csv")
+
+id <- sort(sample(nrow(tmp), as.integer(.70 * nrow(tmp))))
+train_data <- tmp[id,]
+test_data <- tmp[-id,]
+
+
+predictor_variables <- train_data[,-c(ncol(train_data))]
+response_variable <- train_data$Status
+
+suppressMessages(library(dplyr))
+suppressMessages(library(unbalanced))
+
+response_variable = factor(response_variable)
+undersampled_data <- ubBalance(predictor_variables,
+                               response_variable,
+                               type='ubUnder',         # Option for undersampling
+                               verbose = TRUE)
+
+undersampled_combined <- cbind(undersampled_data$X,    # combine output
+                               undersampled_data$Y)
+
+
+oversampled_data <- ubBalance(predictor_variables,
+                              response_variable,
+                              type='ubOver',         # Option for oversampling
+                              k = 2.2,                 # Value of 0 creates 50:50 split
+                              verbose = TRUE)
+
+oversampled_combined <- cbind(oversampled_data$X,    # combine output
+                               oversampled_data$Y)
+
+colnames(oversampled_combined)[ncol(oversampled_combined)] <- "Status"
+
+colnames(undersampled_combined)[ncol(undersampled_combined)] <- "Status"
+
+write.csv(oversampled_combined,"Train_Final_LoanDefault.csv", row.names = TRUE)
+```
+### Loading final preprocessed dataset
+```{r}
+data <- read.csv("Train_Final_LoanDefault.csv")
+unique(data$age)
+data = data[-1]
+data = data[-1]
+data$Status <-factor(data$Status,levels = c(0,1), labels = c("0","1"))
+
+# Don't factor for knn
+
+# data$age = as.numeric(data$age)
+# data$loan_limit = factor(data$loan_limit)
+# data$Gender = factor(data$Gender)
+# data$approv_in_adv = factor(data$approv_in_adv)
+# data$loan_type = factor(data$loan_type)
+# data$loan_purpose = factor(data$loan_purpose)
+# data$Credit_Worthiness = factor(data$Credit_Worthiness)
+# data$business_or_commercial = factor(data$business_or_commercial)
+# data$Neg_ammortization = factor(data$Neg_ammortization)
+# data$interest_only = factor(data$interest_only)
+# data$lump_sum_payment = factor(data$lump_sum_payment)
+# data$occupancy_type = factor(data$occupancy_type)
+# data$credit_type = factor(data$credit_type)
+# data$co.applicant_credit_type = factor(data$co.applicant_credit_type)
+# data$age = factor(data$age)
+# data$submission_of_application = factor(data$submission_of_application)
+```
+
+### temp
+```{r}
+test_data = test_data[-1]
+test_data$Status <-factor(test_data$Status,levels = c(0,1), labels = c("0","1"))
+# test_data$age = as.numeric(test_data$age)
+# test_data$loan_limit = factor(test_data$loan_limit)
+# test_data$Gender = factor(test_data$Gender)
+# test_data$approv_in_adv = factor(test_data$approv_in_adv)
+# test_data$loan_type = factor(test_data$loan_type)
+# test_data$loan_purpose = factor(test_data$loan_purpose)
+# test_data$Credit_Worthiness = factor(test_data$Credit_Worthiness)
+# test_data$business_or_commercial = factor(test_data$business_or_commercial)
+# test_data$Neg_ammortization = factor(test_data$Neg_ammortization)
+# test_data$interest_only = factor(test_data$interest_only)
+# test_data$lump_sum_payment = factor(test_data$lump_sum_payment)
+# test_data$occupancy_type = factor(test_data$occupancy_type)
+# test_data$credit_type = factor(test_data$credit_type)
+# test_data$co.applicant_credit_type = factor(test_data$co.applicant_credit_type)
+# test_data$age = factor(test_data$age)
+# test_data$submission_of_application = factor(test_data$submission_of_application)
+```
+
+### Normalizing data
+```{r}
+data$Status =  factor(data$Status)
+
+min_max_norm <- function(x, minX, maxX) {
+  ans <- (x - minX)/(maxX - minX)
+  return (ans)
+}
+
+normalized_data <- data.frame(matrix(NA, nrow = nrow(data), ncol = ncol(data)))
+colnames(normalized_data) <- c(colnames(data))
+
+target = ncol(data) - 1
+
+for (i in c(1 : target)) {
+  if(is.numeric(data[,i])) {
+    normalized_data[,i] <- min_max_norm(data[,i], min(data[,i]), max(data[,i]))
+  }
+  else {
+    normalized_data[,i] <- data[,i]
+  }
+}
+
+normalized_data[,ncol(data)] <- data[,ncol(data)]
+
+train_data <- normalized_data
+```
+
+### Normalizing data
+```{r}
+test_data$Status =  factor(test_data$Status)
+
+min_max_norm <- function(x, minX, maxX) {
+  ans <- (x - minX)/(maxX - minX)
+  return (ans)
+}
+
+normalized_data <- data.frame(matrix(NA, nrow = nrow(test_data), ncol = ncol(test_data)))
+colnames(normalized_data) <- c(colnames(test_data))
+
+target = ncol(test_data) - 1
+
+for (i in c(1 : target)) {
+  if(is.numeric(test_data[,i])) {
+    normalized_data[,i] <- min_max_norm(test_data[,i], min(test_data[,i]), max(test_data[,i]))
+  }
+  else {
+    normalized_data[,i] <- test_data[,i]
+  }
+}
+
+normalized_data[,ncol(test_data)] <- test_data[,ncol(test_data)]
+
+test_data <- normalized_data
+```
+
+### Naive Bayes
+```{r}
+library(e1071)
+
+NaiveBayes <- naiveBayes(Status ~., data = train_data)
+predict_NaiveBayes <- predict(NaiveBayes, test_data)
+
+table(NaiveBayes = predict_NaiveBayes, Status = test_data$Status)
+
+wrong_preds <- sum(predict_NaiveBayes != test_data$Status)
+error_rate <- wrong_preds/length(predict_NaiveBayes)
+print(paste("Error Rate:" , error_rate))
+
+```
+
+
+```{r}
+#install.packages("corrplot", dependencies = TRUE, repos = "http://cran.us.r-project.org")
+library(caret)
+
+library(corrplot)
+fourfoldplot(table(NB = predict_NaiveBayes, Class = test_data$Status), color = c("cyan", "pink"), conf.level = 0, margin = 1, main = "Confusion Matrix")
+corrplot(table(NB = predict_NaiveBayes, Class = test_data$Status),is.corr = FALSE, method = "color")
+cf <- confusionMatrix(test_data$Status, predict_NaiveBayes)
+precision <- posPredValue(predict_NaiveBayes, test_data$Status, positive="1")
+recall <- sensitivity(predict_NaiveBayes, test_data$Status, positive="1")
+
+print(paste("Precision: " , precision))
+print(paste("Recall: " , recall))
+print(paste("Error Rate: ", error_rate))
+print(paste("Accuracy: ", (1 - error_rate)))
+F1 <- (2 * precision * recall) / (precision + recall)
+print(paste("F-1 Score:" , F1))
+```
+
+
+### C5.0
+```{r}
+library('C50')
+C50 <- C5.0(Status~., data = train_data)
+predict_C50 <- predict(C50, test_data, type = "class" )
+table(C5.0 = predict_C50, Status = test_data$Status)
+wrong_preds_C50 <- sum(predict_C50 != test_data$Status)
+error_rate_C50 <- wrong_preds_C50/length(predict_C50)
+print(paste("Error Rate:" , error_rate_C50))
+```
+
+### KNN
+```{r}
+
+library(kknn)
+prediction_k3 <- kknn(formula=Status~., train_data, test_data, k = 3, kernel = "rectangular")
+fit_k3 <- fitted(prediction_k3)
+
+table(Actual=test_data$Status, Fitted=fit_k3)
+
+wrong_preds <- sum(fit_k3 != test_data$Status)
+error_rate <- wrong_preds/length(fit_k3)
+print(paste("Error Rate:" , error_rate))
+```
+
+```{r}
+library(caret)
+
+library(corrplot)
+fourfoldplot(table(KNN3 = fit_k3, Status = test_data$Status), color = c("#FF00FF", "#0000FF"), conf.level = 0, margin = 1, main = "Confusion Matrix")
+precision <- posPredValue(fit_k3, test_data$Status, positive="1")
+recall <- sensitivity(fit_k3, test_data$Status, positive="1")
+
+print(paste("Precision: " , precision))
+print(paste("Recall: " , recall))
+print(paste("Error Rate: ", error_rate))
+print(paste("Accuracy: ", (1 - error_rate)*100))
+F1 <- (2 * precision * recall) / (precision + recall)
+print(paste("F-1 Score:" , F1))
+```
+
+
+```{r}
+
+library(kknn)
+prediction_k5 <- kknn(formula=Status~., train_data, test_data, k = 5, kernel = "rectangular")
+fit_k5 <- fitted(prediction_k5)
+
+table(Actual=test_data$Status, Fitted=fit_k5)
+
+wrong_preds <- sum(fit_k5 != test_data$Status)
+error_rate <- wrong_preds/length(fit_k5)
+print(paste("Error Rate:" , error_rate))
+```
+
+```{r}
+library(caret)
+
+library(corrplot)
+fourfoldplot(table(KNN5 = fit_k5, Status = test_data$Status), color = c("#FF00FF", "#0000FF"), conf.level = 0, margin = 1, main = "Confusion Matrix")
+precision <- posPredValue(fit_k5, test_data$Status, positive="1")
+recall <- sensitivity(fit_k5, test_data$Status, positive="1")
+
+print(paste("Precision: " , precision))
+print(paste("Recall: " , recall))
+print(paste("Error Rate: ", error_rate))
+print(paste("Accuracy: ", (1 - error_rate)*100))
+F1 <- (2 * precision * recall) / (precision + recall)
+print(paste("F-1 Score:" , F1))
+```
+
+
+```{r}
+
+library(kknn)
+prediction_k7 <- kknn(formula=Status~., train_data, test_data, k = 7, kernel = "rectangular")
+fit_k7 <- fitted(prediction_k7)
+
+table(Actual=test_data$Status, Fitted=fit_k7)
+
+wrong_preds <- sum(fit_k7 != test_data$Status)
+error_rate <- wrong_preds/length(fit_k7)
+print(paste("Error Rate:" , error_rate))
+```
+
+```{r}
+library(caret)
+
+library(corrplot)
+fourfoldplot(table(KNN7 = fit_k7, Status = test_data$Status), color = c("#FF00FF", "#0000FF"), conf.level = 0, margin = 1, main = "Confusion Matrix")
+precision <- posPredValue(fit_k7, test_data$Status, positive="1")
+recall <- sensitivity(fit_k7, test_data$Status, positive="1")
+
+print(paste("Precision: " , precision))
+print(paste("Recall: " , recall))
+print(paste("Error Rate: ", error_rate))
+print(paste("Accuracy: ", (1 - error_rate)*100))
+F1 <- (2 * precision * recall) / (precision + recall)
+print(paste("F-1 Score:" , F1))
+```
+
+
+### Decision Tree using CART
+```{r}
+df <- read.csv("O_Final_LoanDefault.csv", header = TRUE, na.strings = "?", )
+ 
+df = df[-1]
+df$Status <- factor(df$Status,levels = c("0","1"))
+#summary(df1)
+split_df <- floor(0.7*nrow(df))
+train_index <- sort(sample(seq_len(nrow(df)), size = split_df))
+df1Status = df['Status']
+#View(df1Class)
+# View(train)
+# View(test)
+
+train <- df[train_index,]
+test <- df[-train_index,]
+
+cart <- rpart(Status~., data = train, method = "class")
+cart_pred <- predict(cart, test, type="class")
+table(CART =  cart_pred, Class = test$Status)
+c_mat <- as.table(matrix(c(33207, 12501, 293,11790), nrow = 2, byrow = TRUE))
+fourfoldplot(c_mat, color = c("#add8e6", "#FFFF00"),
+             conf.level = 0, margin = 1, main = "Confusion Matrix")
+print(c_mat)
+rpart.plot(cart)
+cart_pred
+wrong_pred <- sum(cart_pred != test$Status)
+error <- wrong_pred/length(cart_pred)
+print(paste("Error Rate : ", format(round(error*100,3), nsmall =4)))
+print(paste("Accuracy: ", format(round(100-(error*100),3),nsmall = 3)))
+```
+
+
+

@@ -1,0 +1,104 @@
+---
+title: "Assignment 1"
+author: 'Siddharth Harsukh Pansuria | CWID: 20005837'
+date: "2/12/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+### Clearing environmental variables.
+```{r}
+rm(list = ls())
+```
+
+### Loading breast-cancer-wisconsin.csv and replacing '?' with NA
+```{r}
+data <- read.csv("breast-cancer-wisconsin.csv", na.strings = '?')
+```
+
+### Viewing the top 10 rows of the loaded data
+```{r}
+head(data, n = 10)
+```
+
+### Summarizing the data
+```{r}
+summary(data)
+```
+
+### Total number of missing values in our dataset
+```{r}
+sum(is.na(data))
+```
+
+### Finding which columns have missing values
+```{r}
+colSums(is.na(data))
+```
+
+### Finding row number of missing values
+```{r}
+which(is.na(data$F6))
+```
+
+### Replacing missing values with mean of the column
+```{r}
+for(i in 1 : ncol(data)) {
+  data[is.na(data[,i]),i] <- mean(data[,i], na.rm = TRUE)
+}
+
+# rounding up columns upto 2 decimal places for simplicity
+data[,-1] <-round(data[,-1],2)
+
+print.data.frame(data)
+```
+
+### Displaying frequency table of Class vs F6
+```{r}
+table(data$Class,data$F6)
+```
+
+### Displaying scatter plot F1 to F6 one pair at a time
+```{r}
+plot(data[, 2:7], col="red", main="Scatter Plot for F1 to F6 using plot")
+pairs(data[, 2:7], col="blue", main="Scatter Plot for F1 to F6 using pairs")
+```
+
+### Displaying histogram box plot for F7 to F9
+```{r}
+par(mfrow = c(2, 3))
+hist(data$F7, prob = TRUE, main = 'F7 Histogram', xlab = 'F7',col = "red")
+hist(data$F8, prob = TRUE, main = 'F8 Histogram', xlab = 'F8',col = "green")
+hist(data$F9, prob = TRUE, main = 'F9 Histogram', xlab = 'F9',col = "orange")
+boxplot(data$F7,main="F7 Boxplot",col = "red")
+boxplot(data$F8,main="F8 Boxplot",col = "green")
+boxplot(data$F9,main="F9 Boxplot",col = "orange")
+```
+
+### Deleting all objects
+```{r}
+ls()
+rm(list = ls())
+```
+
+### Loading breast-cancer-wisconsin.csv and replacing '?' with NA
+```{r}
+data <- read.csv("breast-cancer-wisconsin.csv", na.strings = '?')
+```
+
+### Deleting rows with NA values
+```{r}
+data = na.omit(data)
+```
+
+### Final number of rows after deletion
+```{r}
+nrow(data)
+```
+
+### Printing the data
+```{r}
+print.data.frame(data)
+```

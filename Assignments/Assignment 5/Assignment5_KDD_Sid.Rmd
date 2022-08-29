@@ -1,0 +1,71 @@
+---
+title: "Assignment 5"
+author: 'Siddharth Harsukh Pansuria | CWID: 20005837'
+date: "3/19/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+### Clearing environmental variables.
+```{r}
+rm(list = ls())
+```
+
+### Loading the breast cancer dataset and replacing '?' with NA
+```{r}
+data <- read.csv('breast-cancer-wisconsin.csv')
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(data, n=10)
+```
+
+### Removing first column since it only contains ID
+```{r}
+data <- data[-1]
+```
+
+### Setting column 'Class' as a factor of benign and malignant
+```{r}
+data$Class <- factor(data$Class, levels = c(2,4), labels = c("benign", "malignant"))
+```
+
+### Displaying top 10 rows of the data loaded
+```{r}
+head(data, n = 10)
+```
+
+### Splitting the dataset into training and test data
+```{r}
+id <- sort(sample(nrow(data), as.integer(.70 * nrow(data))))
+train_data <- data[id,]
+test_data <- data[-id,]
+```
+
+### Importibng library and implementing CART
+```{r}
+library(rpart)
+cart <- rpart(Class ~ ., data = train_data, method = "class")
+```
+
+### Predicting on the test data
+```{r}
+predict_CART <- predict(cart, test_data, type = "class")
+```
+
+### Frequency table for CART
+```{r}
+table(CART = predict_CART, Class = test_data$Class)
+```
+### Calculating the error rate
+#### Number of wrong predictions
+```{r}
+wrong_preds <- sum(predict_CART != test_data$Class)
+```
+#### Error Rate in Naïve Bayes predictions
+```{r}
+error_rate <- wrong_preds/length(predict_CART)
+print(paste("Error Rate:" , error_rate))
+```
